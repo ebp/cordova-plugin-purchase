@@ -8,10 +8,11 @@
 ///
 /// ### product types
 ///
-/*///*/     store.FREE_SUBSCRIPTION = "free subscription";
-/*///*/     store.PAID_SUBSCRIPTION = "paid subscription";
-/*///*/     store.CONSUMABLE        = "consumable";
-/*///*/     store.NON_CONSUMABLE    = "non consumable";
+/*///*/     store.FREE_SUBSCRIPTION         = "free subscription";
+/*///*/     store.PAID_SUBSCRIPTION         = "paid subscription";
+/*///*/     store.NON_RENEWING_SUBSCRIPTION = "non renewing subscription";
+/*///*/     store.CONSUMABLE                = "consumable";
+/*///*/     store.NON_CONSUMABLE            = "non consumable";
 
 ///
 /// ### error codes
@@ -41,6 +42,7 @@ var ERROR_CODES_BASE = 6777000;
 /*///*/     store.ERR_REFRESH             = ERROR_CODES_BASE + 19; // Failed to refresh the store.
 /*///*/     store.ERR_PAYMENT_EXPIRED     = ERROR_CODES_BASE + 20;
 /*///*/     store.ERR_DOWNLOAD            = ERROR_CODES_BASE + 21;
+/*///*/     store.ERR_SUBSCRIPTION_UPDATE_NOT_AVAILABLE = ERROR_CODES_BASE + 22;
 
 ///
 /// ### product states

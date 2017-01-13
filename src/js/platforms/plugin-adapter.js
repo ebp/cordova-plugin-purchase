@@ -9,7 +9,7 @@ store.when("refreshed", function() {
 });
 
 store.when("re-refreshed", function() {
-    iabGetPurchases();
+    store.iabGetPurchases();
 });
 
 // The following table lists all of the server response codes
@@ -75,6 +75,7 @@ function iabLoaded(validProducts) {
             p.set({
                 title: validProducts[i].title || validProducts[i].name,
                 price: validProducts[i].price || validProducts[i].formattedPrice,
+                priceMicros: validProducts[i].price_amount_micros,
                 description: validProducts[i].description,
                 currency: validProducts[i].price_currency_code ? validProducts[i].price_currency_code : "",
                 state: store.VALID
@@ -90,45 +91,8 @@ function iabLoaded(validProducts) {
         }
     }
 
-    iabGetPurchases();
+    store.iabGetPurchases();
 }
-
-function iabGetPurchases() {
-    store.inappbilling.getPurchases(
-        function(purchases) { // success
-            // example purchases data:
-            //
-            // [
-            //   {
-            //     "purchaseToken":"tokenabc",
-            //     "developerPayload":"mypayload1",
-            //     "packageName":"com.example.MyPackage",
-            //     "purchaseState":0,
-            //     "orderId":"12345.6789",
-            //     "purchaseTime":1382517909216,
-            //     "productId":"example_subscription"
-            //   },
-            //   { ... }
-            // ]
-            if (purchases && purchases.length) {
-                for (var i = 0; i < purchases.length; ++i) {
-                    var purchase = purchases[i];
-                    var p = store.get(purchase.productId);
-                    if (!p) {
-                        store.log.warn("plugin -> user owns a non-registered product");
-                        continue;
-                    }
-                    store.setProductData(p, purchase);
-                }
-            }
-            store.ready(true);
-        },
-        function() { // error
-            // TODO
-        }
-    );
-}
-
 
 store.when("requested", function(product) {
     store.ready(function() {
@@ -151,7 +115,7 @@ store.when("requested", function(product) {
         product.set("state", store.INITIATED);
 
         var method = 'buy';
-        if (product.type !== store.NON_CONSUMABLE && product.type !== store.CONSUMABLE) {
+        if (product.type === store.FREE_SUBSCRIPTION || product.type === store.PAID_SUBSCRIPTION) {
             method = 'subscribe';
         }
 
@@ -191,7 +155,7 @@ store.when("requested", function(product) {
             else {
                 product.set("state", store.VALID);
             }
-        }, product.id);
+        }, product.id, product.additionalData);
     });
 });
 
@@ -200,7 +164,8 @@ store.when("requested", function(product) {
 /// `consume()` the product.
 store.when("product", "finished", function(product) {
     store.log.debug("plugin -> consumable finished");
-    if (product.type === store.CONSUMABLE) {
+    if (product.type === store.CONSUMABLE || product.type === store.NON_RENEWING_SUBSCRIPTION) {
+        var transaction = product.transaction;
         product.transaction = null;
         store.inappbilling.consumePurchase(
             function() { // success
@@ -214,7 +179,9 @@ store.when("product", "finished", function(product) {
                     message: err
                 });
             },
-            product.id);
+            product.id,
+            transaction.id
+        );
     }
     else {
         product.set('state', store.OWNED);

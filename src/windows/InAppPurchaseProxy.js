@@ -1,40 +1,47 @@
 ﻿var cordova = require('cordova');
 
-module.exports = {
-    setTestMode: function(win, fail, args){
-        //switch between live and similator mode for IAP testing
-        this.currentApp = Windows.ApplicationModel.Store.CurrentAppSimulator;
-        
-        Windows.ApplicationModel.Package.current.installedLocation.getFolderAsync("www").done(
-            function (folder) {
-                folder.getFileAsync("in-app-purchase.xml").done(
-                    function (file) {
-                        console.log("got the xml file for currentAppSimulator", file);
-                        this.currentApp.reloadSimulatorAsync(file).done(
-                            function () {
-                                // Get the license info
-                                this.productLicenses = this.currentApp.licenseInformation.productLicenses;
-                                if (this.currentApp && this.productLicenses) {
-                                    console.log("loaded xml file");
-                                    win();
-                                } else {
-                                    console.log("failed xml file");
-                                    fail();
-                                }
-                            }.bind(this),
-                            function (err) {
-                                console.log("This is still not working!!");
-                                console.log(err);
+var setTestMode = function (win, fail, args) {
+    //switch between live and similator mode for IAP testing
+    this.currentApp = Windows.ApplicationModel.Store.CurrentAppSimulator;
+
+    Windows.ApplicationModel.Package.current.installedLocation.getFolderAsync("www").done(
+        function (folder) {
+            folder.getFileAsync("in-app-purchase.xml").done(
+                function (file) {
+                    console.log("got the xml file for currentAppSimulator", file);
+                    this.currentApp.reloadSimulatorAsync(file).done(
+                        function () {
+                            // Get the license info
+                            this.productLicenses = this.currentApp.licenseInformation.productLicenses;
+                            if (this.currentApp && this.productLicenses) {
+                                console.log("loaded xml file");
+                                win(true);
+                            } else {
+                                console.log("failed xml file");
                                 fail();
                             }
-                        );
-                    }.bind(this));
-            }.bind(this)
-        );
-    },    
+                        }.bind(this),
+                        function (err) {
+                            console.log("error loading Windows IAP simulator");
+                            console.log(err);
+                            fail();
+                        }
+                    );
+                }.bind(this));
+        }.bind(this)
+    );
+};
+
+module.exports = {
     init: function (win, fail, args) {
+        if (store && store.sandbox){
+            setTestMode(win, fail, args);
+            return;
+        }
         if (!this.currentApp){
             this.currentApp = Windows.ApplicationModel.Store.CurrentApp;
+            // Load the product licenses
+            this.productLicenses = this.currentApp.licenseInformation.productLicenses;
         }
         //Don't need to init anything else here
         win(true);
@@ -100,7 +107,16 @@ module.exports = {
         var productId = args[0];
         this.currentApp.requestProductPurchaseAsync(productId).done(
             function (purchaseResults) {
-                win({ transaction: purchaseResults });
+                // Create the transaction json from the PurchaseResults object that Windows returns
+                var transaction_results = {
+                    transaction: {
+                        offerId: purchaseResults.offerId,
+                        receiptXml: purchaseResults.receiptXml,
+                        status: purchaseResults.status,
+                        transactionId: purchaseResults.transactionId
+                    }
+                };
+                win(transaction_results);
             },
             function (err) {
                 fail(err);
@@ -113,7 +129,7 @@ module.exports = {
         if (this.productLicenses.lookup(productId).isActive) {
             //TODO - Subscriptions?
         } else {
-            this.buy(win, fail, args);
+            this.inappbilling.buy(win, fail, productId);
         }
     },
 

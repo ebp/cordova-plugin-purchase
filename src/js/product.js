@@ -31,7 +31,7 @@ store.Product = function(options) {
 
     ///  - `product.type` - Family of product, should be one of the defined [product types](#product-types).
     var type = this.type = options.type || null;
-    if (type !== store.CONSUMABLE && type !== store.NON_CONSUMABLE && type !== store.PAID_SUBSCRIPTION && type !== store.FREE_SUBSCRIPTION)
+    if (type !== store.CONSUMABLE && type !== store.NON_CONSUMABLE && type !== store.PAID_SUBSCRIPTION && type !== store.FREE_SUBSCRIPTION && type !== store.NON_RENEWING_SUBSCRIPTION)
         throw new TypeError("Invalid product type");
 
     ///  - `product.state` - Current state the product is in (see [life-cycle](#life-cycle) below). Should be one of the defined [product states](#product-states)
@@ -42,6 +42,9 @@ store.Product = function(options) {
 
     ///  - `product.description` - Localized longer description
     this.description = options.description || options.localizedDescription || null;
+
+    /// - `product.priceMicros` - Localized price, in micro-units. Available only on Android
+    this.priceMicros = options.priceMicros || null;
 
     ///  - `product.price` - Localized price, with currency symbol
     this.price = options.price || null;
@@ -75,6 +78,9 @@ store.Product = function(options) {
 
     ///  - `product.downloaded` - Non-consumable content has been successfully downloaded for this product
     this.downloaded = options.downloaded;
+
+    ///  - `product.additionalData` - additional data possibly required for product purchase
+    this.additionalData = options.additionalData || null;
 
     ///  - `product.transaction` - Latest transaction data for this product (see [transactions](#transactions)).
     this.transaction = null;
@@ -282,6 +288,7 @@ store.Product.prototype.verify = function() {
 ///  - When finished, a consumable product will get back to the `VALID` state, while other will enter the `OWNED` state.
 ///  - Any error in the purchase process will bring a product back to the `VALID` state.
 ///  - During application startup, products may go instantly from `REGISTERED` to `APPROVED` or `OWNED`, for example if they are purchased non-consumables or non-expired subscriptions.
+///  - Non-Renewing Subscriptions are iOS products only. Please see the [iOS Non Renewing Subscriptions documentation](https://github.com/j3k0/cordova-plugin-purchase/blob/master/doc/ios.md#non-renewing) for a detailed explanation.
 ///
 /// #### state changes
 ///

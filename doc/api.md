@@ -261,16 +261,24 @@ The `verbosity` property defines how much you want `store.js` to write on the co
  - `store.DEBUG` or `4` to enable internal debugging messages.
 
 See the [logging levels](#logging-levels) constants.
+## <a name="sandbox"></a>*store.sandbox*
+
+The `sandbox` property defines if you want to invoke the platform purchase sandbox
+
+- Windows will use the IAP simulator if true (see Windows docs)
+- Android: NOT IN USE
+- iOS: NOT IN USE
 
 ## Constants
 
 
 ### product types
 
-    store.FREE_SUBSCRIPTION = "free subscription";
-    store.PAID_SUBSCRIPTION = "paid subscription";
-    store.CONSUMABLE        = "consumable";
-    store.NON_CONSUMABLE    = "non consumable";
+    store.FREE_SUBSCRIPTION         = "free subscription";
+    store.PAID_SUBSCRIPTION         = "paid subscription";
+    store.NON_RENEWING_SUBSCRIPTION = "non renewing subscription";
+    store.CONSUMABLE                = "consumable";
+    store.NON_CONSUMABLE            = "non consumable";
 
 ### error codes
 
@@ -294,6 +302,7 @@ See the [logging levels](#logging-levels) constants.
     store.ERR_REFRESH             = ERROR_CODES_BASE + 19; // Failed to refresh the store.
     store.ERR_PAYMENT_EXPIRED     = ERROR_CODES_BASE + 20;
     store.ERR_DOWNLOAD            = ERROR_CODES_BASE + 21;
+    store.ERR_SUBSCRIPTION_UPDATE_NOT_AVAILABLE = ERROR_CODES_BASE + 22;
 
 ### product states
 
@@ -343,6 +352,7 @@ Products object have the following fields and methods.
  - `product.owned` - Product is owned
  - `product.downloading` - Product is downloading non-consumable content
  - `product.downloaded` - Non-consumable content has been successfully downloaded for this product
+ - `product.additionalData` - additional data possibly required for product purchase
  - `product.transaction` - Latest transaction data for this product (see [transactions](#transactions)).
 
 ### *store.Product* public methods
@@ -433,6 +443,7 @@ Find below a diagram of the different states a product can pass by.
  - When finished, a consumable product will get back to the `VALID` state, while other will enter the `OWNED` state.
  - Any error in the purchase process will bring a product back to the `VALID` state.
  - During application startup, products may go instantly from `REGISTERED` to `APPROVED` or `OWNED`, for example if they are purchased non-consumables or non-expired subscriptions.
+ - Non-Renewing Subscriptions are iOS products only. Please see the [iOS Non Renewing Subscriptions documentation](https://github.com/j3k0/cordova-plugin-purchase/blob/master/doc/ios.md#non-renewing) for a detailed explanation.
 
 #### state changes
 
@@ -603,7 +614,7 @@ Filter by product state:
 
  - `"valid"` - all products in the VALID state.
  - `"invalid"` - all products in the INVALID state.
- - `"owned"` - all products in the INVALID state.
+ - `"owned"` - all products in the OWNED state.
  - etc. (see [here](#product-states) for all product states).
 
 Filter individual products:
@@ -634,7 +645,7 @@ After being called, the callback will be unregistered.
    - Same remarks as `store.when(query, action, callback)`
 
 
-## <a name="order"></a>*store.order(product)*
+## <a name="order"></a>*store.order(product, additionalData)*
 
 Initiate the purchase of a product.
 
@@ -643,6 +654,11 @@ The `product` argument can be either:
  - the `store.Product` object
  - the product `id`
  - the product `alias`
+
+The `additionalData` argument can be either:
+ - null
+ - object with attribute `oldPurchasedSkus`, a string array with the old subscription to upgrade/downgrade on Android. See: [android developer](https://developer.android.com/google/play/billing/billing_reference.html#upgrade-getBuyIntentToReplaceSkus) for more info
+ - object with attribute `developerPayload`, string representing the developer payload as described in [billing best practices](https://developer.android.com/google/play/billing/billing_best_practices.html)
 
 See the ["Purchasing section"](#purchasing) to learn more about
 the purchase process.
@@ -765,6 +781,16 @@ have a way to do just that.
    // then and only then, call refresh.
    store.refresh();
 ```
+
+##### restore purchases example usage
+
+Add a "Refresh Purchases" button to call the `store.refresh()` method, like:
+
+`<button onclick="store.refresh()">Restore Purchases</button>`
+
+To make the restore purchases work as expected, please make sure that
+the "approved" event listener had be registered properly,
+and in the callback `product.finish()` should be called.
 
 ## *store.log* object
 ### `store.log.error(message)`
